@@ -1,7 +1,7 @@
 AuctionsTable:
   Type: AWS::DynamoDB::Table
   Properties:
-    TableName: AuctionsTable
+    TableName: AuctionsTable-${self:provider.stage} # self references to main config file ,i.e, serverless.yml
     BillingMode: PAY_PER_REQUEST
     AttributeDefinitions:
       - AttributeName: id
