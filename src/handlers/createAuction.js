@@ -1,3 +1,8 @@
+import { v4 as uuid } from 'uuid'
+import AWS from 'aws-sdk'
+
+const dynamoDB = new AWS.DynamoDB.DocumentClient()
+
 /**
  * This is a Lambda Fucntion to create an aution using REST API
  * @param {*} event contains all the params, body, and header data passed while making the api call
@@ -10,10 +15,16 @@ async function createAuction(event, context) {
   const now = new Date()
 
   const auction = {
+    id: uuid(),
     title,
     status: 'OPEN',
     createdAt: now.toISOString()
   }
+
+  await dynamoDB.put({
+    TableName: 'AuctionsTable',
+    Item: auction
+  }).promise()
 
   return {
     statusCode: 201,
