@@ -1,9 +1,6 @@
 import AWS from "aws-sdk"
-import middy from "@middy/core"
-import httpJsonBodyParser from "@middy/http-json-body-parser"
-import httpEventNormalizer from "@middy/http-event-normalizer"
-import httpErrorHandler from "@middy/http-error-handler"
 import createError from "http-errors"
+import commonMiddleware from "../lib/commonMiddleware"
 
 const dynamoDB = new AWS.DynamoDB.DocumentClient()
 
@@ -14,15 +11,15 @@ const dynamoDB = new AWS.DynamoDB.DocumentClient()
  *
  * The return of the lambda function needs to be a string, if an object is returned then it first needs to be stringified, else it will throw an error.
  */
-async function getAuction(event, context) {
+export async function getAuctionById(id) {
   let auction
-  const { id } = event.pathParameters
-
   try {
-    const result = await dynamoDB.get({
-      TableName: process.env.AUCTIONS_TABLE_NAME,
-      Key: { id },
-    }).promise()
+    const result = await dynamoDB
+      .get({
+        TableName: process.env.AUCTIONS_TABLE_NAME,
+        Key: { id },
+      })
+      .promise()
 
     auction = result.Item
   } catch (error) {
@@ -30,9 +27,15 @@ async function getAuction(event, context) {
     throw new createError.InternalServerError(error)
   }
 
-  if(!auction) {
+  if (!auction) {
     throw new createError.NotFound(`Auction with ID: "${id}" not found!`)
   }
+  return auction
+}
+
+async function getAuction(event, context) {
+  const { id } = event.pathParameters
+  const auction = await getAuctionById(id)
 
   return {
     statusCode: 200,
@@ -40,7 +43,4 @@ async function getAuction(event, context) {
   }
 }
 
-export const handler = middy(getAuction)
-  .use(httpJsonBodyParser())
-  .use(httpEventNormalizer())
-  .use(httpErrorHandler())
+export const handler = commonMiddleware(getAuction)
