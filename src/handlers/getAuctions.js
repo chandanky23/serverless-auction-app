@@ -12,15 +12,24 @@ const dynamoDB = new AWS.DynamoDB.DocumentClient()
  * The return of the lambda function needs to be a string, if an object is returned then it first needs to be stringified, else it will throw an error.
  */
 async function getAuctions(event, context) {
+  
+  const {status} = event.queryStringParameters
   let auctions
 
-  try {
-    const result = await dynamoDB
-      .scan({
-        TableName: process.env.AUCTIONS_TABLE_NAME,
-      })
-      .promise()
+  const params = {
+    TableName: process.env.AUCTIONS_TABLE_NAME,
+    IndexName: 'statusAndEndDate',
+    KeyConditionExpression: '#status = :status',
+    ExpressionAttributeValues: {
+      ':status': status
+    },
+    ExpressionAttributeNames: {
+      '#status': 'status'
+    }
+  }
 
+  try {
+    const result = await dynamoDB.query(params).promise()
     auctions = result.Items
   } catch (err) {
     console.error(err)
