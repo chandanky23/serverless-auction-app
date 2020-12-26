@@ -1,7 +1,9 @@
 import AWS from "aws-sdk"
 import createError from "http-errors"
+import validator from "@middy/validator"
 import commonMiddleware from "../lib/commonMiddleware"
-import { getAuctionById } from './getAuction'
+import { getAuctionById } from "./getAuction"
+import placeBidSchema from "../lib/schemas/placeBid"
 
 const dynamoDB = new AWS.DynamoDB.DocumentClient()
 
@@ -18,22 +20,24 @@ async function placeBid(event, context) {
 
   const auction = await getAuctionById(id)
 
-  if(auction.status !== 'OPEN') {
-    throw new createError.Forbidden('You cannot bid on a CLOSED auction')
+  if (auction.status !== "OPEN") {
+    throw new createError.Forbidden("You cannot bid on a CLOSED auction")
   }
 
-  if(amount <= auction.highestBid.amount) {
-    throw new createError.Forbidden(`Your bid must be higher than ${auction.highestBid.amount}`)
+  if (amount <= auction.highestBid.amount) {
+    throw new createError.Forbidden(
+      `Your bid must be higher than ${auction.highestBid.amount}`
+    )
   }
 
   const params = {
     TableName: process.env.AUCTIONS_TABLE_NAME,
-    Key: {id},
-    UpdateExpression: 'set highestBid.amount = :amount',
+    Key: { id },
+    UpdateExpression: "set highestBid.amount = :amount",
     ExpressionAttributeValues: {
-      ':amount': amount
+      ":amount": amount,
     },
-    ReturnValues: 'ALL_NEW'
+    ReturnValues: "ALL_NEW",
   }
 
   let updatedAuction
@@ -41,7 +45,7 @@ async function placeBid(event, context) {
   try {
     const result = await dynamoDB.update(params).promise()
     updatedAuction = result.Attributes
-  }catch(err) {
+  } catch (err) {
     console.error(err)
     throw new createError.InternalServerError(err)
   }
@@ -52,4 +56,6 @@ async function placeBid(event, context) {
   }
 }
 
-export const handler = commonMiddleware(placeBid)
+export const handler = commonMiddleware(placeBid).use(
+  validator({ inputSchema: placeBidSchema })
+)
