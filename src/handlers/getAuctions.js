@@ -1,6 +1,8 @@
 import AWS from "aws-sdk"
 import createError from "http-errors"
+import validator from "@middy/validator"
 import commonMiddleware from "../lib/commonMiddleware"
+import getAuctionSchema from "../lib/schemas/getAuctions"
 
 const dynamoDB = new AWS.DynamoDB.DocumentClient()
 
@@ -12,20 +14,19 @@ const dynamoDB = new AWS.DynamoDB.DocumentClient()
  * The return of the lambda function needs to be a string, if an object is returned then it first needs to be stringified, else it will throw an error.
  */
 async function getAuctions(event, context) {
-  
-  const {status} = event.queryStringParameters
+  const { status } = event.queryStringParameters
   let auctions
 
   const params = {
     TableName: process.env.AUCTIONS_TABLE_NAME,
-    IndexName: 'statusAndEndDate',
-    KeyConditionExpression: '#status = :status',
+    IndexName: "statusAndEndDate",
+    KeyConditionExpression: "#status = :status",
     ExpressionAttributeValues: {
-      ':status': status
+      ":status": status,
     },
     ExpressionAttributeNames: {
-      '#status': 'status'
-    }
+      "#status": "status",
+    },
   }
 
   try {
@@ -42,4 +43,6 @@ async function getAuctions(event, context) {
   }
 }
 
-export const handler = commonMiddleware(getAuctions)
+export const handler = commonMiddleware(getAuctions).use(
+  validator({ inputSchema: getAuctionSchema, useDefaults: true })
+)
